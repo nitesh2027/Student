@@ -4,7 +4,6 @@ import com.example.student.entity.Student;
 import com.example.student.exception.ResourceNotFound;
 import com.example.student.payload.StudentDto;
 import com.example.student.repository.StudentRepository;
-import org.hibernate.query.SortDirection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -17,7 +16,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class StudentServiceImpl implements StudentService {
-    private StudentRepository studentRepository;
+
+    private final StudentRepository studentRepository;
 
     public StudentServiceImpl(StudentRepository studentRepository) {
         this.studentRepository = studentRepository;
@@ -26,8 +26,8 @@ public class StudentServiceImpl implements StudentService {
     @Override
     public StudentDto createStudent(StudentDto studentDto) {
         Student student = mapToEntity(studentDto);
-        Student savedEntity = studentRepository.save(student);
-        StudentDto dto= mapToDto(savedEntity);
+        Student savedEntity = studentRepository.save(student); // use savedEntity
+        StudentDto dto = mapToDto(savedEntity); // map from savedEntity
         dto.setMessage("Registration saved");
         return dto;
     }
@@ -39,18 +39,16 @@ public class StudentServiceImpl implements StudentService {
 
     @Override
     public StudentDto updateStudent(long id, StudentDto studentDto) {
-        Optional<Student> opStu = studentRepository.findById(id);
-                           Student student=opStu.get();
+        Student student = studentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFound("Registration not found By id: " + id));
 
-         student.setName(studentDto.getName());
-         student.setEmail(studentDto.getEmail());
-         student.setMobile(studentDto.getMobile());
-            Student savedEntity= studentRepository.save(student);
-              StudentDto dto=  mapToDto(student);
-                 return dto;
+        student.setName(studentDto.getName());
+        student.setEmail(studentDto.getEmail());
+        student.setMobile(studentDto.getMobile());
+
+        Student savedEntity = studentRepository.save(student); // save and get entity
+        return mapToDto(savedEntity); // map from savedEntity
     }
-
-
 
     @Override
     public List<StudentDto> getAllStudents(int pageNo, int pageSize, String sortBy, String sortDir) {
@@ -58,31 +56,20 @@ public class StudentServiceImpl implements StudentService {
                 ? Sort.by(Sort.Direction.ASC, sortBy)
                 : Sort.by(Sort.Direction.DESC, sortBy);
 
-        Pageable pageable=PageRequest.of(pageNo,pageSize, sort);
+        Pageable pageable = PageRequest.of(pageNo, pageSize, sort);
         Page<Student> all = studentRepository.findAll(pageable);
         List<Student> students = all.getContent();
-        List<StudentDto> studentDtos = students.stream().map(s -> mapToDto(s)).collect(Collectors.toList());
-        System.out.println(all.getTotalPages());
-        System.out.println(all.isFirst());
-        System.out.println(all.isLast());
-        System.out.println(pageable.getPageNumber());
-        System.out.println(pageable.getPageSize()) ;
-        return studentDtos;
+        return students.stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
     @Override
     public StudentDto getStudentById(long id) {
-        Student student = studentRepository.findById(id).orElseThrow(
-
-                () -> new ResourceNotFound("Registration not found By id:" + id)
-         );
-
-        StudentDto studentDto = mapToDto(student);
-          return studentDto;
+        Student student = studentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFound("Registration not found By id: " + id));
+        return mapToDto(student);
     }
 
-
-    Student mapToEntity(StudentDto dto) {
+    private Student mapToEntity(StudentDto dto) {
         Student entity = new Student();
         entity.setName(dto.getName());
         entity.setEmail(dto.getEmail());
@@ -90,7 +77,7 @@ public class StudentServiceImpl implements StudentService {
         return entity;
     }
 
-    StudentDto mapToDto(Student student) {
+    private StudentDto mapToDto(Student student) {
         StudentDto dto = new StudentDto();
         dto.setId(student.getId());
         dto.setName(student.getName());
